@@ -1,59 +1,37 @@
-from rapidfuzz import process
 import pandas as pd
 from src.data_loader import load_lifetime, load_deliveries, load_matches
 
-def best_match(name, candidates):
-    """Return the closest matching player name using fuzzy matching."""
-    match, score, index = process.extractOne(name, candidates)
-    return match if score >= 70 else None
 
-def combined_player_profile(player_name):
-    deliveries = load_deliveries()
-    matches = load_matches()
+def combined_player_profile(player):
     lifetime = load_lifetime()
+    deliveries = load_deliveries()
 
-    # ------------------- LIFETIME MATCH -------------------
-    life_names = lifetime['player'].tolist()
-    matched_life = best_match(player_name, life_names)
+    # Clean column names
+    lifetime.columns = [c.strip() for c in lifetime.columns]
+    deliveries.columns = [c.strip() for c in deliveries.columns]
 
-    life = None
-    if matched_life:
-        life = lifetime[lifetime['player'] == matched_life].iloc[0].to_dict()
+    # lifetime stats (batting + bowling)
+    life_row = lifetime[lifetime["Player"] == player]
 
-    # ------------------- IPL MATCH (deliveries) -------------------
-    deliv_names = deliveries['batter'].unique().tolist()
-    matched_deliv = best_match(player_name, deliv_names)
+    if life_row.empty:
+        return None
 
-    if not matched_deliv:
-        return {
-            "lifetime": life,
-            "runs": 0,
-            "balls": 0,
-            "fours": 0,
-            "sixes": 0,
-            "season_runs": pd.DataFrame(columns=['season', 'batsman_runs'])
-        }
+    out = {}
 
-    player_del = deliveries[deliveries['batter'] == matched_deliv]
+    # Batting
+    out["Total Runs"] = float(life_row["total_runs"].values[0])
+    out["Average"] = float(life_row["average"].values[0])
+    out["Strike Rate"] = float(life_row["strike_rate"].values[0])
 
-    runs = player_del['batsman_runs'].sum()
-    balls = len(player_del)
-    fours = (player_del['batsman_runs'] == 4).sum()
-    sixes = (player_del['batsman_runs'] == 6).sum()
+    # IPL batting
+    out["IPL Runs"] = float(life_row["ipl_runs"].values[0])
+    out["IPL 4s"] = float(life_row["fours"].values[0])
+    out["IPL 6s"] = float(life_row["sixes"].values[0])
 
-    merged = player_del.merge(
-        matches[['id', 'season']],
-        left_on='match_id',
-        right_on='id',
-        how='left'
-    )
-    season_runs = merged.groupby('season')['batsman_runs'].sum().reset_index()
+    # Bowling
+    out["IPL Wickets"] = float(life_row["wickets"].values[0])
+    out["Economy Rate"] = float(life_row["economy"].values[0])
+    out["Bowling Average"] = float(life_row["bowling_average"].values[0])
+    out["Bowling Strike Rate"] = float(life_row["bowling_strike_rate"].values[0])
 
-    return {
-        "lifetime": life,
-        "runs": runs,
-        "balls": balls,
-        "fours": fours,
-        "sixes": sixes,
-        "season_runs": season_runs
-    }
+    return out
