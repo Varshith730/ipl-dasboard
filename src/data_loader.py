@@ -19,22 +19,16 @@ def load_deliveries(path="data/deliveries.csv.zip"):
 ROOT = Path(__file__).resolve().parents[1]  # project root
 
 @lru_cache(maxsize=1)
-def load_matches(path:str = str(ROOT / "data" / "matches.csv")):
-    """
-    Load matches.csv (small CSV)
-    """
+def load_matches(path="data/matches.csv"):
     df = pd.read_csv(path)
-    # normalize column names
-    df.columns = [c.strip() for c in df.columns]
+    df.columns = [c.strip().lower() for c in df.columns]
     return df
 
 
+
 @lru_cache(maxsize=1)
-def load_lifetime(path:str = str(ROOT / "data" / "cricket_full_ipl_lifetime.csv")):
-    """
-    Load lifetime/player dataset (cricket_full_ipl_lifetime.csv).
-    """
+def load_lifetime(path="data/cricket_full_ipl_lifetime.csv"):
     df = pd.read_csv(path)
-    df.columns = [c.strip() for c in df.columns]
+    df.columns = [c.strip().lower() for c in df.columns]
     return df
 
